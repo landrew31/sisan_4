@@ -7,9 +7,10 @@ from PyQt5.uic import loadUiType
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure, Axes
 import numpy as np
+from graph_table import Ui_OperatorWindow
 
 
-form_class, base_class = loadUiType('graph_table.ui')
+# form_class, base_class = loadUiType('graph_table.ui')
 
 
 class DynamicRiskCanvas(FigureCanvas):
@@ -88,7 +89,7 @@ class OperatorViewWindow(QDialog):
         remove_old = kwargs.get('remove_old', False)
         descriptions = kwargs.get('descriptions', [None] * 3)
         self.timer = None
-        self.ui = form_class()
+        self.ui = Ui_OperatorWindow()
         self.ui.setupUi(self)
         self.status_bar = QStatusBar(self)
         self.ui.windowLayout.addWidget(self.status_bar)
@@ -105,6 +106,7 @@ class OperatorViewWindow(QDialog):
 
     def update_graphics(self, real_value, predicted_values, risk_values, forecast_ticks):
         for i, graph in enumerate(self.graphs):
+            # print(real_value[i], risk_values[i])
             graph.update_figure(real_value[i], predicted_values[i], risk_values[i], forecast_ticks)
 
     def closeEvent(self, event):

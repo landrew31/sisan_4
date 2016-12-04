@@ -6,3 +6,4 @@ matplotlib
 pyinstaller
 tabulate
 statsmodels
+xlrd

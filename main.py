@@ -12,13 +12,15 @@ from PyQt5.uic import loadUiType
 
 from solver_manager import * #SolverManager
 from bruteforce import BruteForceWindow
+from main_window import Ui_Form
+
 
 app = QApplication(sys.argv)
 app.setApplicationName('lab4_sa')
-form_class, base_class = loadUiType('main_window.ui')
+# form_class, base_class = loadUiType('data/main_window.ui')
 
 
-class MainWindow(QDialog, form_class):
+class MainWindow(QDialog, Ui_Form):
     # signals:
     input_changed = pyqtSignal('QString')
     output_changed = pyqtSignal('QString')

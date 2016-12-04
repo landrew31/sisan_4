@@ -12,7 +12,9 @@ from PyQt5.uic import loadUiType
 
 import os
 
-reason = [u'Малий прибуток\n',u'Недостатній запас ходу\n',u'Низький рівень заряду АБ\n']
+START_FUEL = 47
+TIME_DELTA = 10
+reason = [u'Мала бортова напруга\n',u'Недостатній запас палива\n',u'Низький рівень заряду АБ\n']
 #reason = [u'Малий прибуток; ',u'Недостатній запас ходу; ',u'Низький рівень заряду АБ; ']
 
 def calculate_rdr_delta(ycurrent, yf,  yd):
@@ -24,6 +26,7 @@ def lblText(lbl, text):
     return
 
 def prob(x, xmax, xmin):
+    # print(x, xmax, xmin)
     res = np.fabs((x - xmax) / (xmax - xmin))
     r = np.ma.array(res, mask=np.array(x >= xmax), fill_value=0)
     return r.filled()
@@ -59,8 +62,8 @@ def classify_danger_rating(level):
 
 
 class SolverManager(object):
-    Y_C = np.array([[930], [1000], [5000000]])  # warning value
-    Y_D = np.array([[0.0], [0.0], [0.0]])  # failure value
+    Y_C = np.array([[11.7], [1], [12]])  # warning value
+    Y_D = np.array([[10.5], [0.0], [10.5]])  # failure value
 
     def __init__(self, d):
         self.custom_struct = d['custom_struct']
@@ -74,7 +77,8 @@ class SolverManager(object):
         self.forecast_size = d['pred_steps']
         self.operator_view = OperatorViewWindow(warn=self.Y_C, fail=self.Y_D, callback=self,
                                                 descriptions=[u'прибыль\ от\ перевозки,\ грн', u'запас\ хода,\ м',
-                                                              u'Запасенная\ в\ АБ\ энергия,\ Дж'])
+                                                              u'Запасенная\ в\ АБ\ энергия,\ Дж'],
+                                                tail=self.forecast_size)
         self.current_iter = 1
         self.y_influenced = None
         self.data_window = None
@@ -101,10 +105,12 @@ class SolverManager(object):
             self.operator_view.timer.stop()
 
     def fit(self, shift, n):
+        # print('fit', shift, n)
+
         self.data_window = self.data[shift:shift + n]
         self.solver.load_data(self.data_window[:, :-2])  # y2 and y3 not used
         self.solver.prepare()
-        self.predict()
+        self.predict(shift, n)
         self.check_sensors_consistency()
         self.risk()  # really suspicious realisation
         self.y_influenced = [y * (1 - self.f) for y in self.y_forecasted]
@@ -115,17 +121,33 @@ class SolverManager(object):
                                                      time_ticks=self.time[shift:shift + n + self.solver.pred_step])
             self.first_launch = False
         else:
+            # print(self.data_window[-1, -3:])
             self.operator_view.update_graphics(self.data_window[-1, -3:], self.y_forecasted, self.y_influenced,
                                                self.time[shift + n - 1:shift + n + self.solver.pred_step])
-        self.y_current = np.array([self.solver.Y_[-1,0], self.solver.X_[0][-1,3], self.solver.X_[1][-1,2]])
+        # print('Y___', self.solver.Y_)
+        # print('X_', self.solver.X_)
+        # print('X_0', self.solver.X_[0])
+        # print('X_1', self.solver.X_[1])
+        # print('X_0', self.solver.X_[0][-1,3])
+        # print('X_1', self.solver.X_[1][-1,2])
+        # print(self.time)
+        # print(shift, n)
+
+        fuel = (13120 - self.time[shift] * 10) / 13120 * START_FUEL - 3
+        # print(self.solver.X_[0][-1,0])
+        self.y_current = np.array([self.solver.Y_[-1,0], fuel, self.solver.X_[0][-1,0]])
+
+        # self.y_current = np.array([self.solver.Y_[-1,0], self.solver.X_[0][-1,3], self.solver.X_[1][-1,2]])
         self.rdr_calc()
         self.current_data()
         self.table_data_forecasted()
 
     def check_sensors_consistency(self):
-        mask_positive = np.array([True, True, True, True, True, True, False,
-                                  True, True, True, True, True, False,
-                                  False, True, True, True, False])
+        # mask_positive = np.array([True, True, True, True, True, True, False,
+        #                           True, True, True, True, True, False,
+        #                           False, True, True, True, False])
+        mask_positive = np.array([False, False, False, False, False, False, False,
+                                  False, False, ])
         result_positive = (self.data_window[:, :-3] < 0).max(axis=0) * mask_positive
         if result_positive.any():
             self.operator_view.status_bar.showMessage('Sensors {} have problems'.format(
@@ -137,6 +159,7 @@ class SolverManager(object):
 
     def risk(self):
         self.p = prob(self.y_forecasted, self.Y_C, self.Y_D)
+        # print('p', self.p)
         self.f = 1 - (1 - self.p[0, :]) * (1 - self.p[1, :]) * (1 - self.p[2, :])
         #calculate reason warning situation
         self.reason = np.array([],dtype = str)
@@ -153,8 +176,18 @@ class SolverManager(object):
 
         self.danger_rate = np.array([classify_danger_rating(i) for i in self.f])
 
-    def predict(self):
-        self.y_forecasted = [self.solver.YF, self.solver.XF[0][3], self.solver.XF[1][2]]
+    def predict(self, shift, n):
+        # self.y_forecasted = [self.solver.YF, self.solver.XF[0][3], self.solver.XF[1][2]]
+        fuel = np.array(list(
+            [  START_FUEL * (13120 - self.time[shift + i]*10) / 13120 - 3
+             for i in range(self.forecast_size)]
+        ))
+
+        print(fuel)
+        voltage = np.array(list(
+            [x[0] for x in self.solver.X_[0][-10:, 0].tolist()]
+        ))
+        self.y_forecasted = [self.solver.YF, fuel, voltage]
         return
 
     def table_data_forecasted(self):
@@ -162,6 +195,7 @@ class SolverManager(object):
         y1 = self.y_forecasted[0]
         y2 = self.y_forecasted[1]
         y3 = self.y_forecasted[2]
+        # print(self.danger_rate)
         state = self.danger_rate[:, 1]
         risk = self.f
         reason =self.reason

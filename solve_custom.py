@@ -152,7 +152,10 @@ class SolveExpTh(Solve):
         k = 0  # point of beginning column to multiply
         for j in range(m):  # 0 - 2
             for i in range(self.n):  # 0 - 49
-                F1i[i, j] = psi[i, k:self.dim_integral[j]] * a[k:self.dim_integral[j], 0]
+                try:
+                    F1i[i, j] = psi[i, k:self.dim_integral[j]] * a[k:self.dim_integral[j], 0]
+                except:
+                    F1i[i, j] = 0
             k = self.dim_integral[j]
         return np.matrix(F1i)
 
@@ -173,7 +176,10 @@ class SolveExpTh(Solve):
         F = np.ndarray(self.Y.shape, dtype=float)
         for j in range(F.shape[1]):  # 2
             for i in range(F.shape[0]):  # 50
-                F[i, j] = self.Fi_tanh[j][i, :] * self.c[:, j]
+                try:
+                    F[i, j] = self.Fi_tanh[j][i, :] * self.c[:, j]
+                except:
+                    F[i, j] = 0
         self.F = np.exp(np.matrix(F)) - 1 - self.OFFSET  # F = exp(sum(c*tanh(Fi))) - 1
         self.norm_error = []
         for i in range(self.Y.shape[1]):
@@ -202,11 +208,18 @@ class SolveExpTh(Solve):
         psi = np.array(psi).T
         big_phi = list()
         for i in range(3):
-            big_phi.append([self.aggregate(psi[k, (self.dim_integral[i - 1] if i > 0 else 0): self.dim_integral[i]],
+            try:
+                rand_a = [self.aggregate(psi[k, (self.dim_integral[i - 1] if i > 0 else 0): self.dim_integral[i]],
                                            self.a.A[(self.dim_integral[i - 1] if i > 0 else 0):
-                                           self.dim_integral[i], k]) for k in range(self.dim[3])])
+                                           self.dim_integral[i], k]) for k in range(self.dim[3])]
+            except:
+                rand_a = [0 for k in range(self.dim[3])]
+            big_phi.append(rand_a)
         big_phi = np.array(big_phi).T
-        result = np.array([self.aggregate(big_phi[k], self.c.A[:, k]) for k in range(self.dim[3])])
+        try:
+            result = np.array([self.aggregate(big_phi[k], self.c.A[:, k]) for k in range(self.dim[3])])
+        except:
+            result = 0
         result = result * (self.maxY - self.minY) + self.minY
         return result
 

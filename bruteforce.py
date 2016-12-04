@@ -7,11 +7,12 @@ from PyQt5.uic import loadUiType
 from calculate_optimal_degrees import *
 from solve_custom import SolveExpTh
 from solve import Solve
+from bruteforce_window import Ui_Form
 
-form_class, base_class = loadUiType('bruteforce_window.ui')
+# form_class, base_class = loadUiType('bruteforce_window.ui')
 
 
-class BruteForceWindow(QDialog, form_class):
+class BruteForceWindow(QDialog, Ui_Form):
     update_degrees = pyqtSignal(int, int, int)
 
     def __init__(self, *args):

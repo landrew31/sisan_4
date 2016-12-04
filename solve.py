@@ -30,7 +30,7 @@ def eval_sh_chebyt(n, x):
             t = np.poly1d([2,0])*t1 -t0
             t0 = t1
             t1 = t
-            print(t)
+            # print(t)
     return t(np.poly1d([2,-1]))(x)
 
 def eval_sh_chebyu(n, x):
@@ -45,7 +45,7 @@ def eval_sh_chebyu(n, x):
             t = np.poly1d([2,0])*t1 -t0
             t0 = t1
             t1 = t
-            print(t)
+            # print(t)
     return t(np.poly1d([2,-1]))(x)
 
 class Solve(object):
@@ -436,22 +436,31 @@ class Solve(object):
         psi = np.array(psi).T
         big_phi = list()
         for i in range(3):
-            big_phi.append([self.aggregate(psi[k, (self.dim_integral[i - 1] if i > 0 else 0): self.dim_integral[i]],
+            try:
+                rand_a = [self.aggregate(psi[k, (self.dim_integral[i - 1] if i > 0 else 0): self.dim_integral[i]],
                                            self.a.A[(self.dim_integral[i - 1] if i > 0 else 0):
-                                           self.dim_integral[i], k]) for k in range(self.dim[3])])
+                                           self.dim_integral[i], k]) for k in range(self.dim[3])]
+            except:
+                rand_a = [0 for k in range(self.dim[3])]
+            big_phi.append(rand_a)
         big_phi = np.array(big_phi).T
-        result = np.array([self.aggregate(big_phi[k], self.c.A[:, k]) for k in range(self.dim[3])])
+        try:
+            result = np.array([self.aggregate(big_phi[k], self.c.A[:, k]) for k in range(self.dim[3])])
+        except:
+            result = 0
         result = result * (self.maxY - self.minY) + self.minY
         return result
 
     def build_predicted(self):
         XF = list()
+        tail_index = 0 - self.pred_step
+        # print('x_', self.X_)
         for i, x in enumerate(self.X_):
             xf = list()
             for j, xc in enumerate(x.T):
                 # crutch for adequate forecast
                 diff = xc[0, -1] - xc[0, -self.pred_step - 1]
-                xf.append(xc.getA1()[-10:] + diff)
+                xf.append(xc.getA1()[tail_index:] + diff)
                 # xf.append(forecast(xc.getA1(), self.pred_step))
             XF.append(xf)
         yf = list()
@@ -461,6 +470,8 @@ class Solve(object):
                 for xfc in xf:
                     x.append(xfc[-s])
             yf.append(self.calculate_value(x)) #y depend on all x
+        # print('yf', yf)
+        # print('xf', XF)
         self.XF = XF
         self.YF = np.array(yf).flatten() #flatten because one y
 
