@@ -133,7 +133,7 @@ class SolverManager(object):
         # print(self.time)
         # print(shift, n)
 
-        fuel = (13120 - self.time[shift] * 10) / 13120 * START_FUEL - 3
+        fuel = (13120 - self.time[shift] ) / 13120 * START_FUEL
         # print(self.solver.X_[0][-1,0])
         self.y_current = np.array([self.solver.Y_[-1,0], fuel, self.solver.X_[0][-1,0]])
 
@@ -179,7 +179,7 @@ class SolverManager(object):
     def predict(self, shift, n):
         # self.y_forecasted = [self.solver.YF, self.solver.XF[0][3], self.solver.XF[1][2]]
         fuel = np.array(list(
-            [  START_FUEL * (13120 - self.time[shift + i]*10) / 13120 - 3
+            [  START_FUEL * (13120 - self.time[shift + i]) / 13120
              for i in range(self.forecast_size)]
         ))
 
