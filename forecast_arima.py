@@ -18,9 +18,9 @@ def choose_arima_order(endog):
                 warnings.simplefilter("ignore")
                 res = mod.fit(disp=0, solver='bfgs', maxiter=5000)
         except:
-            return float('inf')
+            return float(13000)
         if math.isnan(res.aic):
-            return float('inf')
+            return float(13000)
         return res.aic
 
     grid = (slice(1, 5, 1), slice(0, 3, 1), slice(0, 5, 1))

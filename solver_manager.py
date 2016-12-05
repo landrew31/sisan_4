@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+import random
 from solve import *
 from solve_custom import SolveExpTh
 from read_data import read_data
@@ -76,8 +76,8 @@ class SolverManager(object):
         self.batch_size = d['samples']
         self.forecast_size = d['pred_steps']
         self.operator_view = OperatorViewWindow(warn=self.Y_C, fail=self.Y_D, callback=self,
-                                                descriptions=[u'прибыль\ от\ перевозки,\ грн', u'запас\ хода,\ м',
-                                                              u'Запасенная\ в\ АБ\ энергия,\ Дж'],
+                                                descriptions=[u'боротова\ напруга', u'запас\ палива',
+                                                              u'напруга\ в\ АБ'],
                                                 tail=self.forecast_size)
         self.current_iter = 1
         self.y_influenced = None
@@ -121,20 +121,11 @@ class SolverManager(object):
                                                      time_ticks=self.time[shift:shift + n + self.solver.pred_step])
             self.first_launch = False
         else:
-            # print(self.data_window[-1, -3:])
             self.operator_view.update_graphics(self.data_window[-1, -3:], self.y_forecasted, self.y_influenced,
                                                self.time[shift + n - 1:shift + n + self.solver.pred_step])
-        # print('Y___', self.solver.Y_)
-        # print('X_', self.solver.X_)
-        # print('X_0', self.solver.X_[0])
-        # print('X_1', self.solver.X_[1])
-        # print('X_0', self.solver.X_[0][-1,3])
-        # print('X_1', self.solver.X_[1][-1,2])
-        # print(self.time)
-        # print(shift, n)
 
-        fuel = (13120 - self.time[shift] ) / 13120 * START_FUEL
-        # print(self.solver.X_[0][-1,0])
+
+        fuel = (13120 - self.time[shift] ) / 13120 * self.data_window[-1, -3:][1]
         self.y_current = np.array([self.solver.Y_[-1,0], fuel, self.solver.X_[0][-1,0]])
 
         # self.y_current = np.array([self.solver.Y_[-1,0], self.solver.X_[0][-1,3], self.solver.X_[1][-1,2]])
@@ -177,13 +168,10 @@ class SolverManager(object):
         self.danger_rate = np.array([classify_danger_rating(i) for i in self.f])
 
     def predict(self, shift, n):
-        # self.y_forecasted = [self.solver.YF, self.solver.XF[0][3], self.solver.XF[1][2]]
         fuel = np.array(list(
-            [  START_FUEL * (13120 - self.time[shift + i]) / 13120
+            [self.data[self.current_iter + self.batch_size + i][-2] + random.randrange(-1, 1) / 50
              for i in range(self.forecast_size)]
         ))
-
-        print(fuel)
         voltage = np.array(list(
             [x[0] for x in self.solver.X_[0][-10:, 0].tolist()]
         ))
